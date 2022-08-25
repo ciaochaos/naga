@@ -793,6 +793,28 @@ impl super::Instruction {
         instruction
     }
 
+    pub(super) fn atomic_compare_exchange(
+        result_type_id: Word,
+        id: Word,
+        pointer: Word,
+        scope_id: Word,
+        equal: Word,
+        unequal: Word,
+        value: Word,
+        comparator: Word,
+    ) -> Self {
+        let mut instruction = Self::new(Op::AtomicCompareExchange);
+        instruction.set_type(result_type_id);
+        instruction.set_result(id);
+        instruction.add_operand(pointer);
+        instruction.add_operand(scope_id);
+        instruction.add_operand(equal);
+        instruction.add_operand(unequal);
+        instruction.add_operand(value);
+        instruction.add_operand(comparator);
+        instruction
+    }
+
     //
     // Bit Instructions
     //
