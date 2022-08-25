@@ -647,16 +647,9 @@ impl<'a> ResolveContext<'a> {
             crate::Expression::AtomicResult {
                 kind,
                 width,
-                comparison,
+                ..
             } => {
-                if comparison {
-                    TypeResolution::Value(Ti::Scalar {
-                        kind: crate::ScalarKind::Bool, 
-                        width: crate::BOOL_WIDTH
-                    })
-                } else {
-                    TypeResolution::Value(Ti::Scalar { kind, width })
-                }
+                TypeResolution::Value(Ti::Scalar { kind, width })
             }
             crate::Expression::Select { accept, .. } => past(accept)?.clone(),
             crate::Expression::Derivative { axis: _, expr } => past(expr)?.clone(),

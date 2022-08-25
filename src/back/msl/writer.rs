@@ -2699,6 +2699,38 @@ impl<W: Write> Writer<W> {
                     result,
                 } => {
                     write!(self.out, "{}", level)?;
+
+                    if let crate::AtomicFunction::Exchange { compare: Some(cmp) } = *fun {
+                        let res_name = format!("{}{}", back::BAKE_PREFIX, cmp.index());
+                        self.named_expressions.insert(result, res_name);
+
+                        // returned bool is useless
+                        let context = &context.expression;
+                        let policy = context.choose_bounds_check_policy(pointer);
+                        let checked = policy == index::BoundsCheckPolicy::ReadZeroSkipWrite
+                            && self.put_bounds_checks(pointer, context, back::Level(0), "")?;
+                
+                        if checked {
+                            write!(self.out, " ? ")?;
+                        }
+                        
+                        write!(self.out, "{}::atomic_compare_exchange_weak_explicit({}", NAMESPACE, ATOMIC_REFERENCE)?;
+                        self.put_access_chain(pointer, policy, context)?;
+                        write!(self.out, ", ")?;
+                        write!(self.out, "{}", ATOMIC_REFERENCE)?;
+                        self.put_access_chain(cmp, policy, context)?;
+                        write!(self.out, ", ")?;
+                        self.put_expression(value, context, true)?;
+                        write!(self.out, ", {}::memory_order_relaxed", NAMESPACE)?;
+                        write!(self.out, ", {}::memory_order_relaxed)", NAMESPACE)?;
+                        
+                        if checked {
+                            write!(self.out, " : DefaultConstructible()")?;
+                        }
+                        writeln!(self.out, ";")?;
+                        continue;
+                    }
+
                     let res_name = format!("{}{}", back::BAKE_PREFIX, result.index());
                     self.start_baking_expression(result, &context.expression, &res_name)?;
                     self.named_expressions.insert(result, res_name);
@@ -2735,30 +2767,7 @@ impl<W: Write> Writer<W> {
                             self.put_expression(value, &context.expression, true)?;
                             write!(self.out, ", {}::memory_order_relaxed)", NAMESPACE)?;
                         }
-                        crate::AtomicFunction::Exchange { compare: Some(cmp) } => {
-                            let context = &context.expression;
-                            let policy = context.choose_bounds_check_policy(pointer);
-                            let checked = policy == index::BoundsCheckPolicy::ReadZeroSkipWrite
-                                && self.put_bounds_checks(pointer, context, back::Level(0), "")?;
-                    
-                            if checked {
-                                write!(self.out, " ? ")?;
-                            }
-                            
-                            write!(self.out, "{}::atomic_compare_exchange_weak_explicit({}", NAMESPACE, ATOMIC_REFERENCE)?;
-                            self.put_access_chain(pointer, policy, context)?;
-                            write!(self.out, ", ")?;
-                            write!(self.out, "{}", ATOMIC_REFERENCE)?;
-                            self.put_access_chain(cmp, policy, context)?;
-                            write!(self.out, ", ")?;
-                            self.put_expression(value, context, true)?;
-                            write!(self.out, ", {}::memory_order_relaxed", NAMESPACE)?;
-                            write!(self.out, ", {}::memory_order_relaxed)", NAMESPACE)?;
-                            
-                            if checked {
-                                write!(self.out, " : DefaultConstructible()")?;
-                            }
-                        }
+                        _ => !unreachable!(),
                     }
                     // done
                     writeln!(self.out, ";")?;
