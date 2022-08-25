@@ -2785,7 +2785,7 @@ impl<W: Write> Writer<W> {
                                 write!(self.out, " ? ")?;
                             }
                             
-                            write!(self.out, "{}::atomic_exchange_explicit({}", NAMESPACE, ATOMIC_REFERENCE)?;
+                            write!(self.out, "{}::atomic_compare_exchange_weak_explicit({}", NAMESPACE, ATOMIC_REFERENCE)?;
                             self.put_access_chain(pointer, policy, context)?;
                             write!(self.out, ", ")?;
                             write!(self.out, "{}", ATOMIC_REFERENCE)?;
