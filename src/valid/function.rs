@@ -365,7 +365,8 @@ impl super::Validator {
             crate::Expression::AtomicResult {
                 kind,
                 width,
-                comparison: false,
+                // comparison: false,
+                ..
             } if kind == ptr_kind && width == ptr_width => {}
             _ => {
                 return Err(AtomicError::ResultTypeMismatch(result)
@@ -646,6 +647,11 @@ impl super::Validator {
                         _ => false,
                     };
                     if !good {
+                        if let Ti::Pointer { base, .. } = *pointer_ty {
+                            println!("{:?}", context.types[base].inner);
+                            println!("{:?}", value_ty);
+                        }
+
                         return Err(FunctionError::InvalidStoreTypes { pointer, value }
                             .with_span()
                             .with_handle(pointer, context.expressions)

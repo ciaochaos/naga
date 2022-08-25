@@ -650,10 +650,9 @@ impl<'a> ResolveContext<'a> {
                 comparison,
             } => {
                 if comparison {
-                    TypeResolution::Value(Ti::Vector {
-                        size: crate::VectorSize::Bi,
-                        kind,
-                        width,
+                    TypeResolution::Value(Ti::Scalar {
+                        kind: crate::ScalarKind::Bool, 
+                        width: crate::BOOL_WIDTH
                     })
                 } else {
                     TypeResolution::Value(Ti::Scalar { kind, width })
