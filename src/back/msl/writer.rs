@@ -2735,10 +2735,29 @@ impl<W: Write> Writer<W> {
                             self.put_expression(value, &context.expression, true)?;
                             write!(self.out, ", {}::memory_order_relaxed)", NAMESPACE)?;
                         }
-                        crate::AtomicFunction::Exchange { .. } => {
-                            return Err(Error::FeatureNotImplemented(
-                                "atomic CompareExchange".to_string(),
-                            ));
+                        crate::AtomicFunction::Exchange { compare: Some(cmp) } => {
+                            let context = &context.expression;
+                            let policy = context.choose_bounds_check_policy(pointer);
+                            let checked = policy == index::BoundsCheckPolicy::ReadZeroSkipWrite
+                                && self.put_bounds_checks(pointer, context, back::Level(0), "")?;
+                    
+                            if checked {
+                                write!(self.out, " ? ")?;
+                            }
+                            
+                            write!(self.out, "{}::atomic_exchange_explicit({}", NAMESPACE, ATOMIC_REFERENCE)?;
+                            self.put_access_chain(pointer, policy, context)?;
+                            write!(self.out, ", ")?;
+                            write!(self.out, "{}", ATOMIC_REFERENCE)?;
+                            self.put_access_chain(cmp, policy, context)?;
+                            write!(self.out, ", ")?;
+                            self.put_expression(value, context, true)?;
+                            write!(self.out, ", {}::memory_order_relaxed", NAMESPACE)?;
+                            write!(self.out, ", {}::memory_order_relaxed)", NAMESPACE)?;
+                            
+                            if checked {
+                                write!(self.out, " : DefaultConstructible()")?;
+                            }
                         }
                     }
                     // done
