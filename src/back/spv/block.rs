@@ -1956,136 +1956,123 @@ impl<'w> BlockContext<'w> {
                     let value_id = self.cached[value];
                     let value_inner = self.fun_info[value].ty.inner_with(&self.ir_module.types);
 
-                    if let crate::AtomicFunction::Exchange { compare: Some(cmp) } = *fun {
-                        let origin_id = self.gen_id();
-                        let result_type_id = self.get_expression_type_id(&self.fun_info[value].ty);
-                        let comparator_id = self.cached[cmp];
-                        let ace_instruction = Instruction::atomic_compare_exchange(
-                            result_type_id, 
-                            origin_id,
+                    let instruction = match *fun {
+                        crate::AtomicFunction::Add => Instruction::atomic_binary(
+                            spirv::Op::AtomicIAdd,
+                            result_type_id,
+                            id,
                             pointer_id,
-                            scope_constant_id, 
-                            semantics_id, 
-                            semantics_id, 
+                            scope_constant_id,
+                            semantics_id,
                             value_id,
-                            comparator_id
-                        );
-                        let equal_instruction = Instruction::binary(
-                            spirv::Op::LogicalEqual, 
-                            result_type_id, 
-                            id, 
-                            comparator_id, 
-                            origin_id,
-                        );
-                        block.body.push(ace_instruction);
-                        block.body.push(equal_instruction);
-                    } else {
-                        let instruction = match *fun {
-                            crate::AtomicFunction::Add => Instruction::atomic_binary(
-                                spirv::Op::AtomicIAdd,
+                        ),
+                        crate::AtomicFunction::Subtract => Instruction::atomic_binary(
+                            spirv::Op::AtomicISub,
+                            result_type_id,
+                            id,
+                            pointer_id,
+                            scope_constant_id,
+                            semantics_id,
+                            value_id,
+                        ),
+                        crate::AtomicFunction::And => Instruction::atomic_binary(
+                            spirv::Op::AtomicAnd,
+                            result_type_id,
+                            id,
+                            pointer_id,
+                            scope_constant_id,
+                            semantics_id,
+                            value_id,
+                        ),
+                        crate::AtomicFunction::InclusiveOr => Instruction::atomic_binary(
+                            spirv::Op::AtomicOr,
+                            result_type_id,
+                            id,
+                            pointer_id,
+                            scope_constant_id,
+                            semantics_id,
+                            value_id,
+                        ),
+                        crate::AtomicFunction::ExclusiveOr => Instruction::atomic_binary(
+                            spirv::Op::AtomicXor,
+                            result_type_id,
+                            id,
+                            pointer_id,
+                            scope_constant_id,
+                            semantics_id,
+                            value_id,
+                        ),
+                        crate::AtomicFunction::Min => {
+                            let spirv_op = match *value_inner {
+                                crate::TypeInner::Scalar {
+                                    kind: crate::ScalarKind::Sint,
+                                    width: _,
+                                } => spirv::Op::AtomicSMin,
+                                crate::TypeInner::Scalar {
+                                    kind: crate::ScalarKind::Uint,
+                                    width: _,
+                                } => spirv::Op::AtomicUMin,
+                                _ => unimplemented!(),
+                            };
+                            Instruction::atomic_binary(
+                                spirv_op,
                                 result_type_id,
                                 id,
                                 pointer_id,
                                 scope_constant_id,
                                 semantics_id,
                                 value_id,
-                            ),
-                            crate::AtomicFunction::Subtract => Instruction::atomic_binary(
-                                spirv::Op::AtomicISub,
+                            )
+                        }
+                        crate::AtomicFunction::Max => {
+                            let spirv_op = match *value_inner {
+                                crate::TypeInner::Scalar {
+                                    kind: crate::ScalarKind::Sint,
+                                    width: _,
+                                } => spirv::Op::AtomicSMax,
+                                crate::TypeInner::Scalar {
+                                    kind: crate::ScalarKind::Uint,
+                                    width: _,
+                                } => spirv::Op::AtomicUMax,
+                                _ => unimplemented!(),
+                            };
+                            Instruction::atomic_binary(
+                                spirv_op,
                                 result_type_id,
                                 id,
                                 pointer_id,
                                 scope_constant_id,
                                 semantics_id,
                                 value_id,
-                            ),
-                            crate::AtomicFunction::And => Instruction::atomic_binary(
-                                spirv::Op::AtomicAnd,
+                            )
+                        }
+                        crate::AtomicFunction::Exchange { compare: None } => {
+                            Instruction::atomic_binary(
+                                spirv::Op::AtomicExchange,
                                 result_type_id,
                                 id,
                                 pointer_id,
                                 scope_constant_id,
                                 semantics_id,
                                 value_id,
-                            ),
-                            crate::AtomicFunction::InclusiveOr => Instruction::atomic_binary(
-                                spirv::Op::AtomicOr,
-                                result_type_id,
+                            )
+                        }
+                        crate::AtomicFunction::Exchange { compare: Some(cmp) } => {
+                            let comparator_id = self.cached[cmp];
+                            Instruction::atomic_compare_exchange(
+                                result_type_id, 
                                 id,
                                 pointer_id,
-                                scope_constant_id,
-                                semantics_id,
+                                scope_constant_id, 
+                                semantics_id, 
+                                semantics_id, 
                                 value_id,
-                            ),
-                            crate::AtomicFunction::ExclusiveOr => Instruction::atomic_binary(
-                                spirv::Op::AtomicXor,
-                                result_type_id,
-                                id,
-                                pointer_id,
-                                scope_constant_id,
-                                semantics_id,
-                                value_id,
-                            ),
-                            crate::AtomicFunction::Min => {
-                                let spirv_op = match *value_inner {
-                                    crate::TypeInner::Scalar {
-                                        kind: crate::ScalarKind::Sint,
-                                        width: _,
-                                    } => spirv::Op::AtomicSMin,
-                                    crate::TypeInner::Scalar {
-                                        kind: crate::ScalarKind::Uint,
-                                        width: _,
-                                    } => spirv::Op::AtomicUMin,
-                                    _ => unimplemented!(),
-                                };
-                                Instruction::atomic_binary(
-                                    spirv_op,
-                                    result_type_id,
-                                    id,
-                                    pointer_id,
-                                    scope_constant_id,
-                                    semantics_id,
-                                    value_id,
-                                )
-                            }
-                            crate::AtomicFunction::Max => {
-                                let spirv_op = match *value_inner {
-                                    crate::TypeInner::Scalar {
-                                        kind: crate::ScalarKind::Sint,
-                                        width: _,
-                                    } => spirv::Op::AtomicSMax,
-                                    crate::TypeInner::Scalar {
-                                        kind: crate::ScalarKind::Uint,
-                                        width: _,
-                                    } => spirv::Op::AtomicUMax,
-                                    _ => unimplemented!(),
-                                };
-                                Instruction::atomic_binary(
-                                    spirv_op,
-                                    result_type_id,
-                                    id,
-                                    pointer_id,
-                                    scope_constant_id,
-                                    semantics_id,
-                                    value_id,
-                                )
-                            }
-                            crate::AtomicFunction::Exchange { compare: None } => {
-                                Instruction::atomic_binary(
-                                    spirv::Op::AtomicExchange,
-                                    result_type_id,
-                                    id,
-                                    pointer_id,
-                                    scope_constant_id,
-                                    semantics_id,
-                                    value_id,
-                                )
-                            }
-                            _ => unreachable!(),
-                        };
-    
-                        block.body.push(instruction);
-                    }
+                                comparator_id
+                            )
+                        }
+                    };
+
+                    block.body.push(instruction);
                 }
             }
         }
